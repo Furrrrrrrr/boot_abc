@@ -1,5 +1,5 @@
-server:
-  port: 9090
+#server:
+#  port: 9090
 
 
 com:
@@ -7,8 +7,14 @@ com:
   age: 888
 spring:
   datasource:
-    driver-class-name: com.mysql.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/vashdb
+    # Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'. The driver is automatically registered via the SPI and manual loading of the driver class is generally unnecessary
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    #    serverTimezone不指定会报错，useUnicode characterEncoding解决中文乱码问题
+    #    UTC代表的是全球标准时间 ，但是我们使用的时间是北京时区也就是东八区，领先UTC八个小时。
+    #    todo yml中mysql时区设置为utc，DB中create_time字段属性为dateTime，入库后值为2020-04-15 01:40:33 当前插入时间为2020-04-15 09:40:33 utc存在时差问题
+    #    如果设置为utc，入库时间会比当前时间少8小时。
+    #    serverTimezone可以设置为北京时间GMT%2B8、上海时间Asia/Shanghai或者香港时间Hongkong
+    url: jdbc:mysql://localhost:3306/vashdb?useUnicode=true&characterEncoding=UTF-8&serverTimezone=GMT%2B8
     username: root
     password: root
 

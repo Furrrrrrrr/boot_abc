@@ -1,11 +1,12 @@
-package com.example.demo.dao;
+package com.example.demo.service;
 
 import com.example.demo.entity.User;
 
 import java.util.List;
 
-public interface IUserDao {
-    int add (User user);
+public interface UserService {
+
+    int add(User user);
 
     int update(User user);
 
