@@ -1,8 +1,10 @@
 package com.example.demo;
 
 
+import com.alibaba.fastjson.JSONObject;
 import com.example.demo.dao.IUserDao;
 import com.example.demo.entity.User;
+import com.example.demo.util.DateUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -10,13 +12,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.server.LocalServerPort;
-import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.*;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.util.concurrent.FailureCallback;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.SuccessCallback;
+import org.springframework.web.client.AsyncRestTemplate;
 
 import java.net.URL;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 /**
  * todo 其中，classes属性指定启动类，SpringBootTest.WebEnvironment.RANDOM_PORT经常和测试类中@LocalServerPort一起在注入属性时使用。会随机生成一个端口号。
@@ -24,23 +39,41 @@ import java.util.Map;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = DemoApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-//@SpringBootTest()
 public class DemoApplicationTests {
 
-    //    @LocalServerPort 提供了 @Value("${local.server.port}") 的代替
+    //@LocalServerPort 提供了 @Value("${local.server.port}") 的代替
     @LocalServerPort
     private int port;
 
     private URL base;
 
+    private LinkedMultiValueMap<String, String> map;
+
     @Autowired
     private TestRestTemplate testRestTemplate;
+
+
+    /**
+     * AsyncRestTemplate @deprecated as of Spring 5.0, in favor of {@link org.springframework.web.reactive.function.client.WebClient}
+     * 推荐使用Spring 5中的WebClient。WebClient是Spring 5的响应式Web框架Spring WebFlux的一部分，位于spring-webflux项目中。
+     *
+     * <dependency>
+     * <groupId>org.springframework.boot</groupId>
+     * <artifactId>spring-boot-starter-webflux</artifactId>
+     * </dependency>
+     */
+    private AsyncRestTemplate asyncRestTemplate;
 
     @Before
     public void setUp() throws Exception {
         String url = String.format("http://localhost:%d/", port);
         System.err.println(String.format("port is : [%d]", port));
         this.base = new URL(url);
+    }
+
+    @Before
+    public void setUp1() {
+        map = new LinkedMultiValueMap<String, String>();
     }
 
     /**
@@ -80,6 +113,9 @@ public class DemoApplicationTests {
         System.err.println(user);
     }
 
+    /**
+     * testRestTemplate get方法 restful
+     */
     @Test
     public void testQueryOne() {
         int id = 3;
@@ -87,6 +123,9 @@ public class DemoApplicationTests {
         System.err.println(responseEntity.getBody());
     }
 
+    /**
+     * testRestTemplate get方法
+     */
     @Test
     public void testGetById() {
         int id = 4;
@@ -94,6 +133,198 @@ public class DemoApplicationTests {
         map.put("id", id);
         User result = this.testRestTemplate.getForObject(this.base.toString() + "/user/get?id={id}", User.class, map);
         System.err.println(result);
+    }
+
+    /**
+     * testRestTemplate post方法
+     */
+    @Test
+    public void testAdd1() {
+
+        Map request = new HashMap();
+        request.put("username", "name1");
+        request.put("password", "word1");
+        request.put("age", 123);
+        request.put("createTime", DateUtils.formatDate());
+        int result = this.testRestTemplate.postForObject("/user/add", request, Integer.class);
+        System.err.println(result);
+    }
+
+    /**
+     * testRestTemplate post方法
+     * 文件上传测试
+     * 尚无接口，待测试
+     */
+    @Test
+    public void upload() throws Exception {
+        Resource resource = new FileSystemResource("/home/lake/github/wopi/build.gradle");
+        MultiValueMap multiValueMap = new LinkedMultiValueMap();
+        multiValueMap.add("username", "lake");
+        multiValueMap.add("files", resource);
+        User result = testRestTemplate.postForObject("/test/upload", multiValueMap, User.class);
+        assertEquals(result.getId(), 0);
+
+    }
+
+    /**
+     * testRestTemplate exchange方法
+     * 文件下载测试
+     * 尚无接口，待测试
+     */
+    @Test
+    public void download() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("token", "xxxxxx");
+        HttpEntity formEntity = new HttpEntity(headers);
+        String[] urlVariables = new String[]{"admin"};
+        ResponseEntity<byte[]> response = testRestTemplate.exchange("/test/download?username={1}", HttpMethod.GET, formEntity, byte[].class, urlVariables);
+        if (response.getStatusCode() == HttpStatus.OK) {
+//            Files.write(response.getBody(), new File("/home/lake/github/file/test.gradle"));
+            Files.write(Paths.get("c:/output.txt"), response.getBody());
+        }
+    }
+
+    /**
+     * testRestTemplate exchange方法
+     * 请求头信息测试
+     * 调用exchange方法
+     */
+    @Test
+    public void getHeader() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("token", "xxxxxx");
+        HttpEntity formEntity = new HttpEntity(headers);
+        String[] urlVariables = new String[]{"admin"};
+        // todo exchange中的参数待研究
+        ResponseEntity<User> result = testRestTemplate.exchange("/test/getHeader?username={username}", HttpMethod.GET, formEntity, User.class, urlVariables);
+        assertEquals(result.getBody().getId(), 0);
+    }
+
+    /**
+     * testRestTemplate exchange方法
+     * put请求测试
+     * 调用exchange方法
+     */
+    @Test
+    public void putHeader() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("token", "xxxxxx");
+        MultiValueMap multiValueMap = new LinkedMultiValueMap();
+        multiValueMap.add("username", "lake");
+        HttpEntity formEntity = new HttpEntity(multiValueMap, headers);
+        ResponseEntity<User> result = testRestTemplate.exchange("/test/putHeader", HttpMethod.PUT, formEntity, User.class);
+        assertEquals(result.getBody().getId(), 0);
+    }
+
+    @Test
+    public void putTest() {
+        Map request = new HashMap();
+        request.put("username", "update1");
+        request.put("password", "word1update");
+        request.put("age", 34);
+        request.put("id", 7);
+        HttpEntity entity = new HttpEntity(request);
+        ResponseEntity<Integer> exchange = testRestTemplate.exchange("/user/update", HttpMethod.PUT, entity, Integer.class);
+        assertEquals(1, (int) exchange.getBody());
+
+    }
+
+    /**
+     * testRestTemplate exchange方法
+     * delete请求测试
+     * 调用exchange方法
+     */
+    @Test
+    public void delete() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("token", "xxxxx");
+        MultiValueMap multiValueMap = new LinkedMultiValueMap();
+        multiValueMap.add("username", "lake");
+        HttpEntity formEntity = new HttpEntity(multiValueMap, headers);
+        String[] urlVariables = new String[]{"admin"};
+        ResponseEntity<User> result = testRestTemplate.exchange("/test/delete?username={username}", HttpMethod.DELETE, formEntity, User.class, urlVariables);
+        assertEquals(result.getBody().getId(), 0);
+    }
+
+    @Transactional
+    @Rollback
+    @Test
+    public void deleteTest() {
+        int id = 5;
+        ResponseEntity<Integer> exchange = testRestTemplate.exchange("/user/" + id, HttpMethod.DELETE, null, Integer.class);
+        assertEquals(1, (int) exchange.getBody());
+    }
+
+
+    /**
+     * - 异步调用要使用AsyncRestTemplate。 它是RestTemplate的扩展，提供了异步http请求处理的一种机制，通过返回ListenableFuture对象生成回调机制，以达到异步非阻塞发送http请求
+     * 已废弃，替换方案
+     * com.alibaba.fastjson.JSONObject fastJson
+     */
+
+    public String asyncReq() {
+        String url = "http://localhost:8080/jsonAsync";
+        ListenableFuture<ResponseEntity<JSONObject>> future = asyncRestTemplate.getForEntity(url, JSONObject.class);
+        future.addCallback(new SuccessCallback<ResponseEntity<JSONObject>>() {
+            public void onSuccess(ResponseEntity<JSONObject> result) {
+                System.out.println(result.getBody().toJSONString());
+            }
+        }, new FailureCallback() {
+            public void onFailure(Throwable ex) {
+                System.out.println("onFailure:" + ex);
+            }
+        });
+        return "this is async sample";
+    }
+
+
+    /**
+     * MultiValueMap 调试测试
+     * 调试看一下 内部数据结构,其内部是一个LinkedList ??? 待验证
+     */
+
+    @Test
+    public void multiValueMapAdd() {
+        map.add("key", "value1");
+        map.add("key", "value2");
+        assertEquals(1, map.size());
+        List<String> expected = new ArrayList<String>(2);
+        expected.add("value1");
+        expected.add("value2");
+        assertEquals(expected, map.get("key"));
+    }
+
+    @Test
+    public void multiValueMapGetFirst() {
+        List<String> values = new ArrayList<String>(2);
+        values.add("value1");
+        values.add("value2");
+        map.put("key", values);
+        assertEquals("value1", map.getFirst("key"));
+        assertNull(map.getFirst("other"));
+    }
+
+    @Test
+    public void multiValueMapSet() {
+        map.set("key", "value1");
+        map.set("key", "value2");
+        assertEquals(1, map.size());
+        assertEquals(Collections.singletonList("value2"), map.get("key"));
+    }
+
+    @Test
+    public void multiValueMapEquals() {
+        map.set("key1", "value1");
+        assertEquals(map, map);
+        MultiValueMap<String, String> o1 = new LinkedMultiValueMap<String, String>();
+        o1.set("key1", "value1");
+        assertEquals(map, o1);
+        assertEquals(o1, map);
+        Map<String, List<String>> o2 = new HashMap<String, List<String>>();
+        o2.put("key1", Collections.singletonList("value1"));
+        assertEquals(map, o2);
+        assertEquals(o2, map);
+
     }
 
 
