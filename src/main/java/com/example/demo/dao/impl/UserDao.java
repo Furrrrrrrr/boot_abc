@@ -13,6 +13,14 @@ import java.util.List;
 
 /**
  * 使用jdbctemplate
+ *
+ *          batchUpdate适合于批量增、删、改操作；
+ *
+ *          update(…)：使用于增、删、改操作；
+ *
+ *          execute（）：执行一个独立的sql语句，包括ddl语句；
+ *
+ *          queryForInt ：查询出一个整数值
  */
 @Repository
 public class UserDao implements IUserDao {

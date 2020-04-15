@@ -28,10 +28,11 @@ import org.springframework.web.client.AsyncRestTemplate;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 /**
  * todo 其中，classes属性指定启动类，SpringBootTest.WebEnvironment.RANDOM_PORT经常和测试类中@LocalServerPort一起在注入属性时使用。会随机生成一个端口号。
@@ -46,8 +47,6 @@ public class DemoApplicationTests {
     private int port;
 
     private URL base;
-
-    private LinkedMultiValueMap<String, String> map;
 
     @Autowired
     private TestRestTemplate testRestTemplate;
@@ -71,11 +70,6 @@ public class DemoApplicationTests {
         this.base = new URL(url);
     }
 
-    @Before
-    public void setUp1() {
-        map = new LinkedMultiValueMap<String, String>();
-    }
-
     /**
      * 向"/test"地址发送请求，并打印返回结果
      *
@@ -87,9 +81,7 @@ public class DemoApplicationTests {
         ResponseEntity<String> response = this.testRestTemplate.getForEntity(
                 this.base.toString() + "/test", String.class, "");
         System.out.println(String.format("测试结果为：%s", response.getBody()));
-
     }
-
 
     @Test
     public void contextLoads() {
@@ -276,56 +268,5 @@ public class DemoApplicationTests {
         });
         return "this is async sample";
     }
-
-
-    /**
-     * MultiValueMap 调试测试
-     * 调试看一下 内部数据结构,其内部是一个LinkedList ??? 待验证
-     */
-
-    @Test
-    public void multiValueMapAdd() {
-        map.add("key", "value1");
-        map.add("key", "value2");
-        assertEquals(1, map.size());
-        List<String> expected = new ArrayList<String>(2);
-        expected.add("value1");
-        expected.add("value2");
-        assertEquals(expected, map.get("key"));
-    }
-
-    @Test
-    public void multiValueMapGetFirst() {
-        List<String> values = new ArrayList<String>(2);
-        values.add("value1");
-        values.add("value2");
-        map.put("key", values);
-        assertEquals("value1", map.getFirst("key"));
-        assertNull(map.getFirst("other"));
-    }
-
-    @Test
-    public void multiValueMapSet() {
-        map.set("key", "value1");
-        map.set("key", "value2");
-        assertEquals(1, map.size());
-        assertEquals(Collections.singletonList("value2"), map.get("key"));
-    }
-
-    @Test
-    public void multiValueMapEquals() {
-        map.set("key1", "value1");
-        assertEquals(map, map);
-        MultiValueMap<String, String> o1 = new LinkedMultiValueMap<String, String>();
-        o1.set("key1", "value1");
-        assertEquals(map, o1);
-        assertEquals(o1, map);
-        Map<String, List<String>> o2 = new HashMap<String, List<String>>();
-        o2.put("key1", Collections.singletonList("value1"));
-        assertEquals(map, o2);
-        assertEquals(o2, map);
-
-    }
-
 
 }
