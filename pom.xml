@@ -80,6 +80,12 @@
             <version>1.2.41</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+            <version>2.1.2</version>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -89,6 +95,23 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
         </plugins>
+
+        <resources>
+            <!--maven打包，默认会把src/main/resources下面的配置文件打包进来，src/main/java下的java文件编译打包进来。
+            一旦配置pom文件里头的resources节点，那么maven打包的时候自动打破默认的捞取配置文件的位置，只捞取我们配置的位置的配置文件-->
+            <resource>
+                <directory>src/main/java</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                    <include>**/*.xml</include>
+                </includes>
+                <filtering>false</filtering>
+            </resource>
+            <!--todo 此处需要将原resources目录手动添加进去，否则原resources下的配置文件不会被读取-->
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+        </resources>
     </build>
 
 </project>

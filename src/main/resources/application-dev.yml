@@ -39,3 +39,15 @@ jpa:
     ddl-auto: update  # 第一次简表create  后面用update
   show-sql: true
 
+mybatis:
+  type-aliases-package: com.example.demo.entity
+  #  todo 默认情况下此处的xml配置应该在resources目录下，
+  #  如果想要读取src/main/java中的配置文件，需要在pom.xml中的build节点中增加resource节点，同时配置src和resources两个配置
+  mapper-locations: classpath*:com/example/demo/mapping/*.xml
+
+
+#showSql
+logging:
+  level:
+    #    指定接口dao.java所在目录或者父级目录
+    com.example.demo: debug

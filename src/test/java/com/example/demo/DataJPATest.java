@@ -12,10 +12,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -33,10 +35,14 @@ public class DataJPATest {
         again.setUsername("name1");
         again.setPassword("word1");
         Object content = JSONObject.toJSON(again);
-        mockMvc.perform(post("/user/again/add")
+        MvcResult result = mockMvc.perform(post("/user/again/add")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(content.toString()))
-                .andDo(print());
+                .andExpect(status().isOk())
+                .andDo(print())
+                .andReturn();
+        String contentAsString = result.getResponse().getContentAsString();
+        System.err.println(contentAsString);
     }
 
     @Test
